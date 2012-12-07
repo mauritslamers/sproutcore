@@ -47,10 +47,17 @@ SC.Record = SC.Object.extend(
   isRecord: true,
   
   /**
-    If you have nested records
+    Indicates whether this SC.Record has other SC.Records nested within it
+
+    @property {Boolean}
   */
   isParentRecord: false,
-  
+
+  /**
+    Indicates whether this SC.Record is nested within another SC.Record
+
+    @property {Boolean}
+  */
   isChildRecord: false,
   
   // ...............................
@@ -212,10 +219,32 @@ SC.Record = SC.Object.extend(
    * The namespace which to retrieve the childRecord Types from
    */
   //nestedRecordNamespace: null,
+  /**
+    Indicates whether this SC.Record is utilizing nested SC.Records.
+    TODO: is this true only if this is a child record, or is it also true if this is a parent
+    record?
+
+    @property {Boolean}
+  */
   isNestedRecord: false,
-  
-  parent: null, // either a SC.Record instance or an ChildArray instance
-  
+
+  /**
+    This refers to any parent in the event this record is nested (isNestedRecord is true). In the
+    event that the parent nested this record using toOne(), parent will be a SC.Record; if instead
+    the parent nested this record using toMany(), parent will be a SC.ChildArray.
+
+    @property {SC.Record} or {SC.ChildArray}
+  */
+  parent: null,
+
+  /**
+    This tells us where to find the data hash for this SC.Record in the parent's data hash. In the
+    event that the parent nested this record using toOne(), parentAttribute will be a String; if
+    instead the parent nested this record using toMany(), parentAttribute will be a number
+    corresponding to an index in the SC.ChildArray.
+
+    @property {String} or {Number}
+  */
   parentAttribute: null, // the attribute name on the parent record this record is in, or index of the record in the childarray
   
   /**
@@ -266,6 +295,7 @@ SC.Record = SC.Object.extend(
       // effect should be different, because a childrecord should never force the main record to refresh
       // the main record should hold the entire hash as cache, and return the part of this record
       var hash = parent.readChildHash(parentAttr);
+      // TODO: What do else needs done to materialize the record?
       // now set attributes
       //rec = parent.materializeChildRecord(); //rec = parentstore.materializeRecord(prKey);
       //rec.refresh(recordOnly);
@@ -273,13 +303,21 @@ SC.Record = SC.Object.extend(
 
     return this ;
   },
-  
-  readChildHash: function(parentAttribute){
-    if(!this.parent){ // we are the top
+
+    /**
+      Read the data hash for the nested child SC.Record at the given attribute.
+
+      @param {String|Number} attribute the attribute in this SC.Record's data hash where we can find the data hash for the child SC.Record
+      @return {Object}
+     */
+  readChildHash: function(attribute){
+    var parent = this.get('parent'),
+      parentAttribute = this.get('parentAttribute');
+    if(!parent){ // we are the top
       return this._backup[parentAttribute];
     }
     else {
-      var parrec = this.parent.readChildHash(this.parentAttribute);
+      var parrec = parent.readChildHash(parentAttribute);
       if(parrec !== undefined){
         return parrec[parentAttribute];
       }
@@ -402,14 +440,15 @@ SC.Record = SC.Object.extend(
     @returns {Object} the value of the key, or null if it doesn't exist
   */
   readAttribute: function(key) {
-    var store,storeKey,attrs;
-    if(!this.parent){
+    var parent = this.get('parent'),
+      store,storeKey,attrs;
+    if(!parent){
       store = this.get('store');
-      storeKey = this.storeKey;
+      storeKey = this.get('storeKey');
       attrs = store.readDataHash(storeKey);      
     }
     else {
-      
+      // TODO: How do we get the data has in the event that we have a parent?
     }
     return attrs ? attrs[key] : undefined ; 
   },
@@ -428,11 +467,12 @@ SC.Record = SC.Object.extend(
   */
   writeAttribute: function(key, value, ignoreDidChange) {
     var store    = this.get('store'), 
-        storeKey = this.storeKey,
-        parent   = this.parent,
+        storeKey = this.get('storeKey'),
+        parent   = this.get('parent'),
         attrs;
     
     if(parent){
+      // TODO: I'm not clear what this is doing
       parent.writeChildAttribute(this.parent)
     }
     attrs = store.readEditableDataHash(storeKey);
