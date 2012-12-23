@@ -513,7 +513,7 @@ SC.Record = SC.Object.extend(
         throw SC.Record.BAD_STATE_ERROR;
       }
 
-      attrsToChange = _retrieveAttrs(attrs, keyStack);
+      attrsToChange = this._retrieveAttrs(attrs, keyStack);
       lastKey = keyStack.pop();
 
       // TODO: need to throw an exception if we run out of keys or attributes
@@ -957,10 +957,10 @@ SC.Record = SC.Object.extend(
     }
     if (childRecord){
       this.isParentRecord = YES;
-      store = this.get('store');
-      psk = this.get('storeKey');
-      csk = childRecord.get('storeKey');
-      store.registerChildToParent(psk, csk);
+      //store = this.get('store');
+      //psk = this.get('storeKey');
+      //csk = childRecord.get('storeKey');
+      //store.registerChildToParent(psk, csk);
     }
       
     return childRecord;
@@ -1014,34 +1014,37 @@ SC.Record = SC.Object.extend(
     SC.run(function() {
       hash = hash || {}; // init if needed
       
-      store = this.get('store');
-      if (SC.none(store)) throw 'Error: during the creation of a child record: NO STORE ON PARENT!';
-      
-      if (!id && (pk = recordType.prototype.primaryKey)) {
-        id = hash[pk];
-        // In case there isnt a primary key supplied then we create on
-        // on the fly
-        sk = id ? store.storeKeyExists(recordType, id) : null;
-        if (sk){
-          store.writeDataHash(sk, hash);
-          cr = store.materializeRecord(sk);
-          cr.storeDidChangeProperties();
-        } else {
-          sk = store.pushRetrieve(recordType,id,hash);
-          cr = store.materializeRecord(sk);
-          if (SC.none(id)){
-            sk = cr.get('storeKey');
-            id = 'cr'+sk;
-            SC.Store.replaceIdFor(sk, id);
-            hash = store.readEditableDataHash(sk);
-            hash[pk] = id;
-          }
-        }
-        
-      }
-      
-      // ID processing if necessary
-      if(this.generateIdForChild) this.generateIdForChild(cr);
+      cr = recordType.create(hash, {
+        parent: this,
+        isChildRecord: true
+      });
+      // store = this.get('store');
+      // if (SC.none(store)) throw 'Error: during the creation of a child record: NO STORE ON PARENT!';
+      // 
+      // if (!id && (pk = recordType.prototype.primaryKey)) {
+      //   id = hash[pk];
+      //   // In case there isnt a primary key supplied then we create on
+      //   // on the fly
+      //   sk = id ? store.storeKeyExists(recordType, id) : null;
+      //   if (sk){
+      //     store.writeDataHash(sk, hash);
+      //     cr = store.materializeRecord(sk);
+      //     cr.storeDidChangeProperties();
+      //   } else {
+      //     sk = store.pushRetrieve(recordType,id,hash);
+      //     cr = store.materializeRecord(sk);
+      //     if (SC.none(id)){
+      //       sk = cr.get('storeKey');
+      //       id = 'cr'+sk;
+      //       SC.Store.replaceIdFor(sk, id);
+      //       hash = store.readEditableDataHash(sk);
+      //       hash[pk] = id;
+      //     }
+      //   } 
+      // }
+      // 
+      // // ID processing if necessary
+      // if(this.generateIdForChild) this.generateIdForChild(cr);
 
     }, this);
 
