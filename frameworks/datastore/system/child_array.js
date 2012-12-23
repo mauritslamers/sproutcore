@@ -30,7 +30,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
     @property {SC.Record}
   */
-  record: null,
+  parent: null,
   
   /**
     If set will be used by the many array to get an editable version of the
@@ -38,7 +38,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
     @property {String}
   */
-  propertyName: null,
+  parentAttribute: null,
   
   /**
     Actual references to the hashes
@@ -53,7 +53,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   store: function() {
     return this.getPath('record.store');
-  }.property('record').cacheable(),
+  }.property('parent').cacheable(),
   
   /**
     The storeKey for the parent record of this many array.  Editing this 
@@ -62,8 +62,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @property {Number}
   */
   storeKey: function() {
-    return this.getPath('record.storeKey');
-  }.property('record').cacheable(),
+    return this.getPath('parent.storeKey');
+  }.property('parent').cacheable(),
   
   /**
     Returns the storeIds in read only mode.  Avoids modifying the record 
@@ -72,7 +72,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @property {SC.Array}
   */
   readOnlyChildren: function() {
-    return this.get('record').readAttribute(this.get('propertyName'));
+    return this.get('parent').readAttribute(this.get('propertyName'));
   }.property(),
   
   /**
@@ -115,6 +115,28 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     Looks up the store id in the store ids array and materializes a
     records.
   */
+  
+  objectAt: function(idx){
+    var recs = this._records,
+        children = this.get('readOnlyChildren'),
+        hash, ret, len, pname = this.get('parentAttribute');
+      
+    if(!children) return undefined; // nothing to do
+    if(recs && (ret=recs[idx])) return ret;
+    if(!recs) this._records = recs = []; // create cache
+    
+    len = children.length;
+    if(idx >= len) return undefined; // not a good index, return undefined
+    hash = children.objectAt(idx);
+    if(!hash) return undefined;
+    
+    // not in cache, create:
+    //recs[idx] = ret = 
+    
+    //return this.readAttribute(idx);
+  },
+  
+  /*
   objectAt: function(idx) {
     var recs      = this._records, 
         children = this.get('readOnlyChildren'),
@@ -135,7 +157,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     recs[idx] = ret = parent.registerNestedRecord(hash, pname);
     
     return ret;
-  },
+  }, */
 
   /** @private
     Pass through to the underlying array.  The passed in objects must be
