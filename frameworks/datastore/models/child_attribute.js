@@ -28,6 +28,8 @@ SC.ChildAttribute = SC.RecordAttribute.extend(
   /** @scope SC.ChildAttribute.prototype */ {
     
   isNestedRecordTransform: YES,
+  
+  isCacheable: NO, // child attributes cannot be cacheable
       
   // ..........................................................
   // LOW-LEVEL METHODS
