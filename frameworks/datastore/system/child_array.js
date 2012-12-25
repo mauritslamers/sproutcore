@@ -88,7 +88,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   editableChildren: function() {
     var store    = this.get('store'),
         storeKey = this.get('storeKey'),
-        pname    = this.get('propertyName'),
+        pname    = this.get('parentAttribute'),
         ret, hash;
         
     ret = store.readEditableProperty(storeKey, pname);    
@@ -101,6 +101,15 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return ret ;
   }.property(),
     
+  // convenience method  
+  createNestedRecord: function(recType,hash){
+    var parent = this.get('parent'),
+        pattr  = this.get('parentAttribute'),
+        rec;
+    
+    rec = parent.createNestedRecord(recType,hash,pattr);
+    return rec;
+  }, 
   // ..........................................................
   // ARRAY PRIMITIVES
   // 
@@ -137,7 +146,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if (!hash) return undefined;
     
     // not in cache, materialize
-    recs[idx] = ret = parent.registerNestedRecord(hash, pname);
+    //recs[idx] = ret = parent.registerNestedRecord(hash, pname);
+    recs[idx] = ret = parent.materializeNestedRecord(hash, pname);
     
     return ret;
   }, 
