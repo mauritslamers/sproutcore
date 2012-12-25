@@ -27,7 +27,9 @@ sc_require('models/child_attribute');
 */
 SC.ChildrenAttribute = SC.ChildAttribute.extend(
   /** @scope SC.ChildrenAttribute.prototype */ {
-    
+  
+  isChildrenAttribute: true,  // walk like a duck
+  
   // ..........................................................
   // LOW-LEVEL METHODS
   //
