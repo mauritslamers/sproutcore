@@ -953,7 +953,7 @@ SC.Record = SC.Object.extend(
     } 
     else {
       recordType = this._materializeNestedRecordType(value, key);
-      childRecord = this.createNestedRecord(recordType, value);
+      childRecord = this.createNestedRecord(recordType, value, key);
     }
     if (childRecord){
       this.isParentRecord = YES;
@@ -1009,13 +1009,20 @@ SC.Record = SC.Object.extend(
     @param {Hash} hash The hash of attributes to apply to the child record.
     (may be null)
    */
-  createNestedRecord: function(recordType, hash) {
-    var store, id, sk, pk, cr = null;
+  createNestedRecord: function(recordType, hash, key) {
+    var store, id, sk, pk, cr = null, attrkey;
+    
+    if(this[key] && this[key].isNestedRecordTransform){
+      attrkey = this[key].key || key;
+    }
+    else attrkey = key;
+    
     SC.run(function() {
       hash = hash || {}; // init if needed
       
-      cr = recordType.create(hash, {
+      cr = recordType.create({
         parent: this,
+        parentAttribute: attrkey,
         isChildRecord: true
       });
       // store = this.get('store');
