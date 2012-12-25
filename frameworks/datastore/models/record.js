@@ -294,7 +294,7 @@ SC.Record = SC.Object.extend(
     } else if (parent){
       // effect should be different, because a childrecord should never force the main record to refresh
       // the main record should hold the entire hash as cache, and return the part of this record
-      var hash = parent.readChildHash(parentAttr);
+      //var hash = parent.readChildHash(parentAttr);
       // TODO: What do else needs done to materialize the record?
       // now set attributes
       //rec = parent.materializeChildRecord(); //rec = parentstore.materializeRecord(prKey);
@@ -310,20 +310,20 @@ SC.Record = SC.Object.extend(
       @param {String|Number} attribute the attribute in this SC.Record's data hash where we can find the data hash for the child SC.Record
       @return {Object}
      */
-  readChildHash: function(attribute){
-    var parent = this.get('parent'),
-      parentAttribute = this.get('parentAttribute');
-    if(!parent){ // we are the top
-      // TODO: where is _backup defined?
-      return this._backup[parentAttribute];
-    }
-    else {
-      var parrec = parent.readChildHash(parentAttribute);
-      if(parrec !== undefined){
-        return parrec[parentAttribute];
-      }
-    }
-  },
+  // readChildHash: function(attribute){
+  //   var parent = this.get('parent'),
+  //     parentAttribute = this.get('parentAttribute');
+  //   if(!parent){ // we are the top
+  //     // TODO: where is _backup defined?
+  //     return this._backup[parentAttribute];
+  //   }
+  //   else {
+  //     var parrec = parent.readChildHash(parentAttribute);
+  //     if(parrec !== undefined){
+  //       return parrec[parentAttribute];
+  //     }
+  //   }
+  // },
   
   /**
     Deletes the record along with any dependent records.  This will mark the 
@@ -467,6 +467,11 @@ SC.Record = SC.Object.extend(
     return attrs ? attrs[key] : undefined ; 
   },
 
+  // editable version, clone on delivery
+  readEditableAttribute: function(key){
+    var attr = this.readAttribute(key);
+    return SC.clone(attr);
+  },
   /**
     Helper method to recurse down the attributes to the data hash we are changing.
 
@@ -481,7 +486,7 @@ SC.Record = SC.Object.extend(
       return attrs[keyStack.pop()];
     } else {
       var key = keyStack.pop();
-      return this._retrieveAttr(attrs[key], keyStack);
+      return this._retrieveAttrs(attrs[key], keyStack);
     }
   },
 
@@ -966,6 +971,41 @@ SC.Record = SC.Object.extend(
     return childRecord;
   },
   
+  // register will always create a nested record, which is not what we need
+  // createNestedRecord should only create a non existing nested rec, 
+  // and this should return an instance of the right recordType
+  materializeNestedRecord: function(value,key){
+    var childRecord, recordType, attrkey,
+        attribute = this[key];   
+    
+    if (value && value.get && value.get('isRecord')) {
+      childRecord = value;
+    } 
+    else {
+      if(attribute && attribute.isNestedRecordTransform){
+        attrkey = this[key].key || key;
+      }
+      else attrkey = key;
+      recordType = this._materializeNestedRecordType(value, key);
+      childRecord = recordType.create({
+        parent: this,
+        parentAttribute: attrkey,
+        isChildRecord: true
+      });
+      //childRecord = this.createNestedRecord(recordType, value, key);
+    }
+    if (childRecord){
+      this.isParentRecord = YES;
+      //store = this.get('store');
+      //psk = this.get('storeKey');
+      //csk = childRecord.get('storeKey');
+      //store.registerChildToParent(psk, csk);
+    }
+      
+    return childRecord;
+    
+  },
+  
   /**
      private method that retrieves the recordType from the hash that is provided.
 
@@ -1010,21 +1050,48 @@ SC.Record = SC.Object.extend(
     (may be null)
    */
   createNestedRecord: function(recordType, hash, key) {
-    var store, id, sk, pk, cr = null, attrkey;
+    //var store, id, sk, pk, cr = null, attrkey;
+    var attrkey,cr,attrval, 
+        attrIsToMany = false,
+        attribute = this[key];
     
-    if(this[key] && this[key].isNestedRecordTransform){
+    if(attribute && attribute.isNestedRecordTransform){
       attrkey = this[key].key || key;
+      if(attribute.isChildrenAttribute) attrIsToMany = true;
     }
     else attrkey = key;
     
     SC.run(function() {
       hash = hash || {}; // init if needed
       
+      // this function should also check whether the hash already exists at the parent,
+      // because if not, it should write it
+      
       cr = recordType.create({
         parent: this,
         parentAttribute: attrkey,
         isChildRecord: true
       });
+      
+      attrval = this.readAttribute(attrkey);
+      if(!attrval){ // create if it doesn't exist
+        if(attrIsToMany){
+          this.writeAttribute(attrkey,[hash]); // create the array too
+        }
+        else {
+          this.writeAttribute(attrkey,hash);
+        }
+      }
+      else { // update
+        if(attrIsToMany){
+          attrval.push(hash);
+          this.writeAttribute(attrkey,attrval);
+        }
+        else {
+          this.writeAttribute(attrkey,hash);
+        }
+      } 
+      
       // store = this.get('store');
       // if (SC.none(store)) throw 'Error: during the creation of a child record: NO STORE ON PARENT!';
       // 
