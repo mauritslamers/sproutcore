@@ -43,8 +43,8 @@ SC.ChildrenAttribute = SC.ChildAttribute.extend(
     // same object.
     if (!ret) {
       ret = SC.ChildArray.create({ 
-        record:         record,
-        propertyName:   attrKey,
+        parent:         record,
+        parentAttribute:   attrKey,
         defaultRecordType: recordType
       });
 
