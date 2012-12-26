@@ -482,9 +482,8 @@ SC.Record = SC.Object.extend(
    */
   _retrieveAttrs: function(attrs, keyStack) {
     // TODO: need to throw an exception if we run out of attributes before we run out of keys
-    if (2 > keyStack.length) {
-      //return attrs[keyStack.pop()]; 
-      return attrs[keyStack[0]]; // we cannot do pop, as it removes the last item from the keyStack!
+    if (2 >= keyStack.length) { // retrieve attrs runs one time too many.
+      return attrs[keyStack.pop()]; 
     } else {
       var key = keyStack.pop();
       return this._retrieveAttrs(attrs[key], keyStack);
