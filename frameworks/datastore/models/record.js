@@ -467,7 +467,7 @@ SC.Record = SC.Object.extend(
     return attrs ? attrs[key] : undefined ; 
   },
 
-  // editable version, clone on delivery
+  // editable version, clone on delivery, unsure whether actually needed...
   readEditableAttribute: function(key){
     var attr = this.readAttribute(key);
     return SC.clone(attr);
@@ -505,7 +505,7 @@ SC.Record = SC.Object.extend(
       // push the parentAttribute onto the keyStack and call this function on the parent
       parentAttr = this.get('parentAttribute');
       keyStack.push(parentAttr);
-      parent._writeAttribute(keyStack, value, ignoreDidChange);
+      didChange = parent._writeAttribute(keyStack, value, ignoreDidChange);
     } else {
       // We have reached the top. Now we need to grab the editable has from the store and update it
       store = this.get('store');
@@ -1048,12 +1048,22 @@ SC.Record = SC.Object.extend(
     @param {SC.Record} recordType The type of the nested record to create.
     @param {Hash} hash The hash of attributes to apply to the child record.
     (may be null)
+    @param {key} key The name of the key this childrecord is put into
+    
+    createNestedRecord can also be called with (key,hash)
+    it will figure out the record type from the attribute
    */
   createNestedRecord: function(recordType, hash, key) {
     //var store, id, sk, pk, cr = null, attrkey;
     var attrkey,cr,attrval, 
         attrIsToMany = false,
-        attribute = this[key];
+        attribute;
+    
+    if(!key && SC.typeOf(recordType) === 'string'){
+      key = recordType;
+      recordType = this._materializeNestedRecordType(hash,key);
+    }
+    attribute = this[key];
     
     if(attribute && attribute.isNestedRecordTransform){
       attrkey = this[key].key || key;
