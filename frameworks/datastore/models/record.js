@@ -454,7 +454,7 @@ SC.Record = SC.Object.extend(
       this.get('store').recordDidChange(null, null, this.get('storeKey'), key);      
     }
     this.notifyPropertyChange('status');
-
+    
     // If there are any aggregate records, we might need to propagate our new
     // status to them.
     this.propagateToAggregates();
@@ -1157,6 +1157,7 @@ SC.Record = SC.Object.extend(
       });
       
       attrval = this.readAttribute(attrkey);
+      this.propertyWillChange(key);
       if(!attrval){ // create if it doesn't exist
         if(attrIsToMany){
           this.writeAttribute(attrkey,[hash]); // create the array too
@@ -1174,6 +1175,7 @@ SC.Record = SC.Object.extend(
           this.writeAttribute(attrkey,hash);
         }
       } 
+      this.propertyDidChange(key);
       
       // store = this.get('store');
       // if (SC.none(store)) throw 'Error: during the creation of a child record: NO STORE ON PARENT!';
