@@ -632,14 +632,10 @@ SC.Record = SC.Object.extend(
     keyStack.push(key);
     didChange = this._writeAttribute(keyStack, value, ignoreDidChange);
 
-    if (didChange) {
-      if (!ignoreDidChange) {
-        this.endEditing(key);
-      } else {
-        this.cancelEditing();
-      }
+    if(!ignoreDidChange){ 
+      if(didChange) this.endEditing(key);
+      else this.cancelEditing();
     }
-
 
     /*
     var store = this.get('store'),
