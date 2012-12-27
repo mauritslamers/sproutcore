@@ -79,12 +79,26 @@ SC.Record = SC.Object.extend(
     primaryKey property on the underlying JSON hash.
     
     @property {String}
+    
   */
+  // id: function(key, value) {
+  //   if (value !== undefined) {
+  //     this.writeAttribute(this.get('primaryKey'), value);
+  //     return value;
+  //   } else {
+  //     return SC.Store.idFor(this.storeKey);
+  //   }
+  // }.property('storeKey').cacheable(),
+  
   id: function(key, value) {
-    if (value !== undefined) {
+    if (value !== undefined) { 
       this.writeAttribute(this.get('primaryKey'), value);
       return value;
     } else {
+      if(this.isNestedRecord){
+        return this.readAttribute(this.get('primaryKey'));
+      }
+      else return SC.Store.idFor(this.storeKey);
       return SC.Store.idFor(this.storeKey);
     }
   }.property('storeKey').cacheable(),
@@ -105,9 +119,29 @@ SC.Record = SC.Object.extend(
     
     @property {Number}
   */
+  
   status: function() {
-    return this.store.readStatus(this.storeKey);
+    var parent = this.get('parentObject');
+    if(this.isNestedRecord){
+      return parent.get('status');
+    }
+    else {
+      return this.get('store').readStatus(this.storeKey);
+    }
   }.property('storeKey').cacheable(),
+  
+  // status: function() {
+  //   if(this.isNestedRecord){
+  //     // follow the parent record, unless this record has been destroyed
+  //     if(this.get('isDestroyed')) return SC.Record.DESTROYED;
+  //     else {
+  //       return this.get('parentObject').get('status');
+  //     }
+  //   }
+  //   else {
+  //     return this.get('store').readStatus(this.get('storeKey'));
+  //   }
+  // }.property('storeKey').cacheable(),
 
   /**
     The store that owns this record.  All changes will be buffered into this
@@ -119,9 +153,15 @@ SC.Record = SC.Object.extend(
     @property {SC.Store}
   */
   //store: null,
+  
   store: function(){ // will be overwritten by default
-    return this.get('parent').get('store');
+    return this.getPath('parentObject.store');
   }.property().cacheable(),
+  
+  // store: function(){ // will be overwritten by default
+  //   if(this.get('isDestroyed')) return null;
+  //   else return this.get('parentObject').get('store');
+  // }.property().cacheable(),
 
   /**
     This is the store key for the record, it is used to link it back to the 
@@ -133,8 +173,15 @@ SC.Record = SC.Object.extend(
     @property {Number}
   */
   //storeKey: null,
+  
+  // storeKey: function(){ // will be overwritten by default
+  //   return this.get('parentObject').get('storeKey');
+  // }.property().cacheable(),
+  
   storeKey: function(){ // will be overwritten by default
-    return this.get('parent').get('storeKey');
+    // if(this.get('isDestroyed')) return null;
+    // else return this.getPath('parentObject.storeKey');
+    return this.getPath('parentObject.storeKey');
   }.property().cacheable(),
 
   /** 
@@ -142,8 +189,27 @@ SC.Record = SC.Object.extend(
     
     @property {Boolean}
   */
-  isDestroyed: function() {
-    return !!(this.get('status') & SC.Record.DESTROYED);  
+  
+  // isDestroyed: function() {
+  //   return !!(this.get('status') & SC.Record.DESTROYED);  
+  // }.property('status').cacheable(),
+  
+  _sc_nestedrec_isDestroyed: false,
+  
+  isDestroyed: function(key, value) {
+    //debugger;
+    if(this.isNestedRecord){
+      if(value !== undefined){
+        this._sc_nestedrec_isDestroyed = value; // setting for destroyed nested records
+      }
+      else if(this._sc_nestedrec_isDestroyed){
+        return true;
+      }
+      else return !!(this.parentObject.get('status') & SC.Record.DESTROYED);
+    }
+    else {
+      return !!(this.get('status') & SC.Record.DESTROYED);    
+    }
   }.property('status').cacheable(),
   
   /**
@@ -198,13 +264,15 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   attributes: function() {
-    
-    if(this.parent){
+    var store, storeKey, parent = this.get('parentObject');
+    if(this.isNestedRecord){
+      //if(this.get('isDestroyed')) return null;
+      //else return parentObject.get('attributes').get(this.parentAttribute);
       return parent.get('attributes').get(this.parentAttribute);
     }
     else {
-      var store    = this.get('store');
-      var storeKey = this.storeKey;
+      store    = this.get('store');
+      storeKey = this.storeKey;
       return store.readEditableDataHash(storeKey);
     }
     
@@ -219,9 +287,11 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   readOnlyAttributes: function() {
-    
+    var parent = this.get('parentObject');
     if(this.isNestedRecord){
-      return this.parent.get('readOnlyAttributes').get(this.parentAttribute);
+      //if(this.get('isDestroyed')) return null;
+      //else return this.parentObject.get('readOnlyAttributes').get(this.parentAttribute);
+      return parent.get('readOnlyAttributes').get(this.parentAttribute);
     }
     else {
       var store    = this.get('store'), 
@@ -248,16 +318,16 @@ SC.Record = SC.Object.extend(
   isNestedRecord: false,
 
   /**
-    This refers to any parent in the event this record is nested (isNestedRecord is true). In the
-    event that the parent nested this record using toOne(), parent will be a SC.Record; if instead
-    the parent nested this record using toMany(), parent will be a SC.ChildArray.
+    This refers to any parentObject in the event this record is nested (isNestedRecord is true). In the
+    event that the parentObject nested this record using toOne(), parentObject will be a SC.Record; if instead
+    the parent nested this record using toMany(), parentObject will be a SC.ChildArray.
 
     @property {SC.Record} or {SC.ChildArray}
   */
-  parent: null,
+  parentObject: null,
 
   /**
-    This tells us where to find the data hash for this SC.Record in the parent's data hash. In the
+    This tells us where to find the data hash for this SC.Record in the parentObject's data hash. In the
     event that the parent nested this record using toOne(), parentAttribute will be a String; if
     instead the parent nested this record using toMany(), parentAttribute will be a number
     corresponding to an index in the SC.ChildArray.
@@ -301,7 +371,7 @@ SC.Record = SC.Object.extend(
   refresh: function(recordOnly) { 
     var store = this.get('store'), rec, ro,
         sk = this.get('storeKey'),
-        parent = this.get('parent'),
+        parent = this.get('parentObject'),
         parentAttr = this.get('parentAttribute');
     
     
@@ -313,10 +383,10 @@ SC.Record = SC.Object.extend(
     } else if (parent){
       // effect should be different, because a childrecord should never force the main record to refresh
       // the main record should hold the entire hash as cache, and return the part of this record
-      //var hash = parent.readChildHash(parentAttr);
+      //var hash = parentObject.readChildHash(parentAttr);
       // TODO: What do else needs done to materialize the record?
       // now set attributes
-      //rec = parent.materializeChildRecord(); //rec = parentstore.materializeRecord(prKey);
+      //rec = parentObject.materializeChildRecord(); //rec = parentstore.materializeRecord(prKey);
       //rec.refresh(recordOnly);
     }
 
@@ -330,7 +400,7 @@ SC.Record = SC.Object.extend(
       @return {Object}
      */
   // readChildHash: function(attribute){
-  //   var parent = this.get('parent'),
+  //   var parent = this.get('parentObject'),
   //     parentAttribute = this.get('parentAttribute');
   //   if(!parent){ // we are the top
   //     // TODO: where is _backup defined?
@@ -356,23 +426,26 @@ SC.Record = SC.Object.extend(
     @returns {SC.Record} receiver
   */
   destroy: function(recordOnly) { 
-    var store = this.get('store'), rec, ro,
-        sk = this.get('storeKey'),
-        prKey = store.parentStoreKeyExists();
-
-    // If we only want to commit this record or it doesn't have a parent record
-    // we will commit this record
-    ro = recordOnly || (SC.none(recordOnly) && SC.none(prKey));
-    if (ro){
+    var store, ro, sk, parentAttr,
+        parent = this.get('parentObject');
+    
+    ro = recordOnly || (SC.none(recordOnly) && SC.none(parent)); 
+    if(ro){
+      store = this.get('store');
+      sk = this.get('storeKey');
       store.destroyRecord(null, null, sk);
       this.notifyPropertyChange('status');
       // If there are any aggregate records, we might need to propagate our new
       // status to them.
-      this.propagateToAggregates();
-      
-    } else if (prKey){
-      rec = store.materializeRecord(prKey);
-      rec.destroy(recordOnly);
+      this.propagateToAggregates();      
+    }
+    else if(this.isNestedRecord){
+      parentAttr = this.get('parentAttribute');
+      parent.writeAttribute(parentAttr,null); // remove from parent hash
+      // should we keep a link to the parent?
+      this._sc_nestedrec_isDestroyed = true;
+      this.notifyPropertyChange('status');
+      this.notifyPropertyChange('isDestroyed');
     }
     
     return this ;
@@ -396,7 +469,7 @@ SC.Record = SC.Object.extend(
     
     // If we have a parent, they changed too!
     // == TODO: this needs to be more sophisticated: only trigger changes of recs that actually change
-    var p = this.get('parent');
+    var p = this.get('parentObject');
     if (p){
       p.recordDidChange();
     } 
@@ -472,7 +545,7 @@ SC.Record = SC.Object.extend(
     @returns {Object} the value of the key, or null if it doesn't exist
   */
   readAttribute: function(key) {
-    var parent = this.get('parent'),
+    var parent = this.get('parentObject'),
       store,storeKey,attrs;
     if(!parent){
       store = this.get('store');
@@ -511,7 +584,7 @@ SC.Record = SC.Object.extend(
   },
 
   _writeAttribute: function(keyStack, value, ignoreDidChange) {
-    var parent = this.get('parent'),
+    var parent = this.get('parentObject'),
       parentAttr,
       store,
       storeKey,
@@ -592,7 +665,7 @@ SC.Record = SC.Object.extend(
     /*
     var store = this.get('store'),
       storeKey = this.get('storeKey'),
-      parent = this.get('parent'),
+      parent = this.get('parentObject'),
       parentAttr = this.get('parentAttribute'),
       attrs;
     
@@ -1013,7 +1086,7 @@ SC.Record = SC.Object.extend(
       else attrkey = key;
       recordType = this._materializeNestedRecordType(value, key);
       childRecord = recordType.create({
-        parent: parent || this,
+        parentObject: parent || this,
         parentAttribute: attrkey,
         isChildRecord: true
       });
@@ -1099,11 +1172,10 @@ SC.Record = SC.Object.extend(
     SC.run(function() {
       hash = hash || {}; // init if needed
       
-      // this function should also check whether the hash already exists at the parent,
-      // because if not, it should write it
-      
+      // this function also checks whether the child records hash already exists at the parents hash,
+      // because if not, it should write it      
       cr = recordType.create({
-        parent: this,
+        parentObject: this,
         parentAttribute: attrkey,
         isChildRecord: true
       });

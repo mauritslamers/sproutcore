@@ -33,7 +33,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
     @property {SC.Record}
   */
-  parent: null,
+  parentObject: null,
   
   /**
     If set will be used by the many array to get an editable version of the
@@ -56,7 +56,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   store: function() {
     return this.getPath('record.store');
-  }.property('parent').cacheable(),
+  }.property('parentObject').cacheable(),
   
   /**
     The storeKey for the parent record of this many array.  Editing this 
@@ -65,8 +65,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @property {Number}
   */
   storeKey: function() {
-    return this.getPath('parent.storeKey');
-  }.property('parent').cacheable(),
+    return this.getPath('parentObject.storeKey');
+  }.property('parentObject').cacheable(),
   
   /**
     Returns the storeIds in read only mode.  Avoids modifying the record 
@@ -75,8 +75,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @property {SC.Array}
   */
   readOnlyChildren: function() {
-    //return this.get('parent').readAttribute(this.get('propertyName'));
-    return this.get('parent').readAttribute(this.get('parentAttribute'));
+    //return this.get('parentObject').readAttribute(this.get('propertyName'));
+    return this.get('parentObject').readAttribute(this.get('parentAttribute'));
   }.property(),
   
   /**
@@ -103,13 +103,32 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
   // convenience method  
   createNestedRecord: function(recType,hash){
-    var parent = this.get('parent'),
+    var parent = this.get('parentObject'),
         pattr  = this.get('parentAttribute'),
         rec;
     
     rec = parent.createNestedRecord(recType,hash,pattr);
     return rec;
   }, 
+  
+  readAttribute: function(key){
+    var parent = this.get('parentObject');
+    if(!parent) throw new Error("ChildArray without a parentObject? this is a bug");
+    return parent.readAttribute(key);
+  },
+  
+  _writeAttribute: function(keyStack, value, ignoreDidChange) {
+    var parent = this.get('parentObject');
+    if(!parent) throw new Error("ChildArray without a parent? this is a bug");
+    return parent._writeAttribute(keyStack, value, ignoreDidChange);
+  },
+  
+  recordDidChange: function(key){
+    var parent = this.get('parentObject');
+    if(!parent) throw new Error("ChildArray without a parent? this is a bug");
+    return parent.recordDidChange(key);    
+  },
+  
   // ..........................................................
   // ARRAY PRIMITIVES
   // 
@@ -133,7 +152,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     var recs      = this._records, 
         children = this.get('readOnlyChildren'),
         hash, ret, pname = this.get('parentAttribute'),
-        parent = this.get('parent');
+        parent = this.get('parentObject');
     var len = children ? children.length : 0;
     
     if (!children) return undefined; // nothing to do
@@ -147,7 +166,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
     // not in cache, materialize
     //recs[idx] = ret = parent.registerNestedRecord(hash, pname);
-    recs[idx] = ret = parent.materializeNestedRecord(hash, pname);
+    recs[idx] = ret = parent.materializeNestedRecord(hash, pname,this);
     
     return ret;
   }, 
