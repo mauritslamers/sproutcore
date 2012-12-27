@@ -118,7 +118,10 @@ SC.Record = SC.Object.extend(
     
     @property {SC.Store}
   */
-  store: null,
+  //store: null,
+  store: function(){ // will be overwritten by default
+    return this.get('parent').get('store');
+  }.property().cacheable(),
 
   /**
     This is the store key for the record, it is used to link it back to the 
@@ -129,7 +132,10 @@ SC.Record = SC.Object.extend(
     
     @property {Number}
   */
-  storeKey: null,
+  //storeKey: null,
+  storeKey: function(){ // will be overwritten by default
+    return this.get('parent').get('storeKey');
+  }.property().cacheable(),
 
   /** 
     YES when the record has been destroyed
@@ -192,9 +198,16 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   attributes: function() {
-    var store    = this.get('store'), 
-        storeKey = this.storeKey;
-    return store.readEditableDataHash(storeKey);
+    
+    if(this.parent){
+      return parent.get('attributes').get(this.parentAttribute);
+    }
+    else {
+      var store    = this.get('store');
+      var storeKey = this.storeKey;
+      return store.readEditableDataHash(storeKey);
+    }
+    
   }.property(),
 
   /**
@@ -206,11 +219,17 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   readOnlyAttributes: function() {
-    var store    = this.get('store'), 
-        storeKey = this.storeKey,
-        ret      = store.readDataHash(storeKey);
     
-    if (ret) ret = SC.clone(ret, YES);
+    if(this.isNestedRecord){
+      return this.parent.get('readOnlyAttributes').get(this.parentAttribute);
+    }
+    else {
+      var store    = this.get('store'), 
+          storeKey = this.storeKey,
+          ret      = store.readDataHash(storeKey);
+
+      if (ret) ret = SC.clone(ret, YES);      
+    }
 
     return ret;
   }.property(),
@@ -376,7 +395,8 @@ SC.Record = SC.Object.extend(
   recordDidChange: function(key) {
     
     // If we have a parent, they changed too!
-    var p = this.get('parentRecord');
+    // == TODO: this needs to be more sophisticated: only trigger changes of recs that actually change
+    var p = this.get('parent');
     if (p){
       p.recordDidChange();
     } 
@@ -498,11 +518,15 @@ SC.Record = SC.Object.extend(
       attrs,
       attrsToChange,
       lastKey,
+      
       didChange = NO;
 
     if (parent) {
       // If we have a parent record, we need to get our editable hash from the parent record
       // push the parentAttribute onto the keyStack and call this function on the parent
+      if(parent.isChildArray){
+        keyStack.push(parent.indexOf(this));
+      }
       parentAttr = this.get('parentAttribute');
       keyStack.push(parentAttr);
       didChange = parent._writeAttribute(keyStack, value, ignoreDidChange);
@@ -916,7 +940,8 @@ SC.Record = SC.Object.extend(
   toString: function() {
     // We won't use 'readOnlyAttributes' here because accessing them directly
     // avoids a SC.clone() -- we'll be careful not to edit anything.
-    var attrs = this.get('store').readDataHash(this.get('storeKey'));
+    //var attrs = this.get('store').readDataHash(this.get('storeKey'));
+    var attrs = this.get('attributes');
     return "%@(%@) %@".fmt(this.constructor.toString(), SC.inspect(attrs), this.statusString());
   },
   
@@ -974,7 +999,7 @@ SC.Record = SC.Object.extend(
   // register will always create a nested record, which is not what we need
   // createNestedRecord should only create a non existing nested rec, 
   // and this should return an instance of the right recordType
-  materializeNestedRecord: function(value,key){
+  materializeNestedRecord: function(value,key,parent){ 
     var childRecord, recordType, attrkey,
         attribute = this[key];   
     
@@ -988,7 +1013,7 @@ SC.Record = SC.Object.extend(
       else attrkey = key;
       recordType = this._materializeNestedRecordType(value, key);
       childRecord = recordType.create({
-        parent: this,
+        parent: parent || this,
         parentAttribute: attrkey,
         isChildRecord: true
       });
