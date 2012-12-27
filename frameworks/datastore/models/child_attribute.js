@@ -41,7 +41,7 @@ SC.ChildAttribute = SC.RecordAttribute.extend(
     if (!record) {
       throw 'SC.Child: Error during transform: Unable to retrieve parent record.';
     }
-    if (!SC.none(value)) ret = record.registerNestedRecord(value, key);
+    if (!SC.none(value)) ret = record.materializeNestedRecord(value, key);
         
     return ret;
   },
