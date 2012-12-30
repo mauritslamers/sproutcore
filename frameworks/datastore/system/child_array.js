@@ -86,19 +86,40 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @property {SC.Array}
   */
   editableChildren: function() {
-    var store    = this.get('store'),
-        storeKey = this.get('storeKey'),
-        pname    = this.get('parentAttribute'),
-        ret, hash;
+    var parent = this.get('parentObject'),
+        parentAttr = this.get('parentAttribute'),
+        ret;
         
-    ret = store.readEditableProperty(storeKey, pname);    
-    if (!ret) {
-      hash = store.readEditableDataHash(storeKey);
-      ret = hash[pname] = [];      
+    ret = parent.readEditableAttribute(parentAttr);
+    if(!ret){
+      ret = [];
     }
+    if(ret !== this._prevChildren) this.recordPropertyDidChange();
     
-    if (ret !== this._prevChildren) this.recordPropertyDidChange();
-    return ret ;
+    return ret;
+    // 
+    // if(parent){
+    //   
+    // }
+    // else {
+    //   store = this.get('store');
+    //   storeKey = this.get('storeKey');
+    //   ret = store.readEditableProperty(storeKey)
+    // }
+    // 
+    // var store    = this.get('store'),
+    //     storeKey = this.get('storeKey'),
+    //     pname    = this.get('parentAttribute'),
+    //     ret, hash;
+    //     
+    // ret = store.readEditableProperty(storeKey, pname);    
+    // if (!ret) {
+    //   hash = store.readEditableDataHash(storeKey);
+    //   ret = hash[pname] = [];      
+    // }
+    // 
+    // if (ret !== this._prevChildren) this.recordPropertyDidChange();
+    // return ret ;
   }.property(),
     
   // convenience method  
@@ -129,6 +150,16 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return parent.recordDidChange(key);    
   },
   
+  attributes: function(){
+    var parent = this.get('parentObject'), 
+        parentAttr = this.get('parentAttribute'), 
+        attrs;
+    
+    if(!parent) throw new Error("ChildArray without a parent? this is a bug");
+    attrs = parent.get('attributes');
+    if(attrs) return attrs[parentAttr];
+    else return attrs;
+  }.property(),
   // ..........................................................
   // ARRAY PRIMITIVES
   // 
@@ -178,16 +209,18 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   replace: function(idx, amt, recs) {
     var children = this.get('editableChildren'), 
         len      = recs ? (recs.get ? recs.get('length') : recs.length) : 0,
-        record   = this.get('record'), newRecs,
+        record   = this.get('parentObject'), newRecs,
         
-        pname    = this.get('propertyName'),
+        pname    = this.get('parentAttribute'),
         cr, recordType;
     newRecs = this._processRecordsToHashes(recs);
     children.replace(idx, amt, newRecs);
+    record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
-  
+      
     return this;
+    
   },
   
   _processRecordsToHashes: function(recs){
@@ -219,23 +252,29 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   
   /** @private 
     Invoked whenever the children array changes.  Observes changes.
+    
+    WARNING: THIS FUNCTION CREATES OBSERVERS IN THE STORE (!)
   */
-  recordPropertyDidChange: function(keys) {
-    if (keys && !keys.contains(this.get('propertyName'))) return this;
-    
-    var children = this.get('readOnlyChildren');
-    var prev = this._prevChildren, f = this._childrenContentDidChange;
-    
-    if (children === prev) return this; // nothing to do
-        
-    if (prev) prev.removeObserver('[]', this, f);
-    this._prevChildren = children;
-    if (children) children.addObserver('[]', this, f);
-    
-    var rev = (children) ? children.propertyRevision : -1 ;
-    this._childrenContentDidChange(children, '[]', children, rev);
+  
+  recordPropertyDidChange: function(keys){
     return this;
   },
+  // recordPropertyDidChange: function(keys) {
+  //   if (keys && !keys.contains(this.get('parentAttribute'))) return this;
+  //   
+  //   var children = this.get('readOnlyChildren');
+  //   var prev = this._prevChildren, f = this._childrenContentDidChange;
+  //   
+  //   if (children === prev) return this; // nothing to do
+  //       
+  //   if (prev) prev.removeObserver('[]', this, f);
+  //   this._prevChildren = children;
+  //   if (children) children.addObserver('[]', this, f);
+  //   
+  //   var rev = (children) ? children.propertyRevision : -1 ;
+  //   this._childrenContentDidChange(children, '[]', children, rev);
+  //   return this;
+  // },
 
   /** @private
     Invoked whenever the content of the children array changes.  This will
