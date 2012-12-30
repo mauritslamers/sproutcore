@@ -259,13 +259,24 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   attributes: function() {
-    var store, storeKey,
+    var store, storeKey, attrs, idx,
         parent = this.get('parentObject'),
         parentAttr = this.get('parentAttribute');
         
     if(parent){
       if(this.get('isDestroyed')) return null;
-      else return parent.get('attributes').get(parentAttr);
+      else {
+        attrs = parent.get('attributes');
+        if(attrs) {
+          if(parent.isChildArray){
+            debugger;
+            idx = parent.indexOf(this);
+            return attrs[idx];
+          }
+          else return attrs[parentAttr];
+        }
+        else return attrs;
+      }
       //return parent.get('attributes').get(this.parentAttribute);
     }
     else {
@@ -413,8 +424,13 @@ SC.Record = SC.Object.extend(
       this.propagateToAggregates();      
     }
     else if(parent){
-      parentAttr = this.get('parentAttribute');
-      parent.writeAttribute(parentAttr,null); // remove from parent hash
+      if(parent.isChildArray){  // remove ourselves from the array...
+        parent.removeObject(this);
+      }
+      else {
+        parentAttr = this.get('parentAttribute');
+        parent.writeAttribute(parentAttr,null); // remove from parent hash        
+      }
       // should we keep a link to the parent?
       // this.parentObject = null;
       // this.parentAttribute = null;
