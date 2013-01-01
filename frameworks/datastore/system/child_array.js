@@ -196,6 +196,11 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if(attrs) return attrs[parentAttr];
     else return attrs;
   }.property(),
+  
+  status: function(){
+    var parent = this.get('parentObject');
+    if(parent) return parent.get('status');
+  }.property(),
   // ..........................................................
   // ARRAY PRIMITIVES
   // 
