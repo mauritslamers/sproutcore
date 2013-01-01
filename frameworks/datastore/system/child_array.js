@@ -263,7 +263,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
-      
+    this.enumerableContentDidChange();
     return this;
     
   },
