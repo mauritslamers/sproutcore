@@ -68,6 +68,42 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return this.getPath('parentObject.storeKey');
   }.property('parentObject').cacheable(),
   
+  isDestroyed: function(key, value) {
+    var parent = this.get('parentObject');
+    if(value !== undefined){
+      this._sc_nestedrec_isDestroyed = value; // setting for destroyed nested records
+    }
+    else if(this._sc_nestedrec_isDestroyed){
+      return true;
+    }
+    else return !!(parent.get('status') & SC.Record.DESTROYED);
+  }.property('status').cacheable(),
+  
+  // destroy: function(){
+  //   var d = function(obj){
+  //     if(obj && obj.destroy) obj.destroy();
+  //   };
+  //   this.forEach(d);
+  //   this.set('isDestroyed',true);
+  //   this.set('parentObject',null); // prevent memory leak
+  //   this.set('parentAttribute',null);
+  // },
+  
+  notifyChildren: function(prop){
+    var d = function(obj){
+      if(obj){
+        if(obj.notifyPropertyChange){
+          obj.notifyPropertyChange(prop);
+        }
+        if(obj.notifyChildren){
+          obj.notifyChildren(prop);
+        }
+      }
+    };
+    
+    this.forEach(d);
+  },
+  
   /**
     Returns the storeIds in read only mode.  Avoids modifying the record 
     unnecessarily.
@@ -197,7 +233,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     
     // not in cache, materialize
     //recs[idx] = ret = parent.registerNestedRecord(hash, pname);
-    recs[idx] = ret = parent.materializeNestedRecord(hash, pname,this);
+    recs[idx] = ret = parent.materializeNestedRecord(hash, pname, this);
     
     return ret;
   }, 
@@ -213,8 +249,12 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
         
         pname    = this.get('parentAttribute'),
         cr, recordType;
+    
     newRecs = this._processRecordsToHashes(recs);
     children.replace(idx, amt, newRecs);
+    
+    // remove item from _records cache, to leave them to be materialized the next time
+    this._records.replace(idx,amt); 
     record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
@@ -257,6 +297,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   
   recordPropertyDidChange: function(keys){
+    console.log('recordPropertyDidChange called');
     return this;
   },
   // recordPropertyDidChange: function(keys) {
