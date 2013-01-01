@@ -269,7 +269,6 @@ SC.Record = SC.Object.extend(
         attrs = parent.get('attributes');
         if(attrs) {
           if(parent.isChildArray){
-            debugger;
             idx = parent.indexOf(this);
             return attrs[idx];
           }
@@ -411,9 +410,14 @@ SC.Record = SC.Object.extend(
   */
   destroy: function(recordOnly) { 
     var store, ro, sk, parentAttr,
+        isParent = this.get('isParentRecord'),
         parent = this.get('parentObject');
     
     ro = recordOnly || (SC.none(recordOnly) && SC.none(parent)); 
+    // Destroying a record shouldn't automatically remove all children, as it would cause all the 
+    // hashes to be removed, except the parent hash.
+    // What should happen is that all children are notified of the status change 
+    // if(isParent) this._destroyChildren(); 
     if(ro){
       store = this.get('store');
       sk = this.get('storeKey');
@@ -440,8 +444,36 @@ SC.Record = SC.Object.extend(
       this.notifyPropertyChange('status');
       this.notifyPropertyChange('isDestroyed');
     }
-    
+    if(isParent) this.notifyChildren('status');
     return this ;
+  },
+  
+  _destroyChildren: function(){
+    var i,item;
+    for(i in this){
+      item = this[i];
+      if(item && (SC.instanceOf(item,SC.ChildAttribute) || SC.instanceOf(item,SC.ChildrenAttribute))){
+        this.get(i).destroy(); 
+      }
+    }
+  },
+  
+  notifyChildren: function(prop){
+    var i,item, obj;
+    for(i in this){
+      item = this[i];
+      if(item && (SC.instanceOf(item,SC.ChildAttribute) || SC.instanceOf(item,SC.ChildrenAttribute))){
+        obj = this.get(i);
+        if(obj){
+          if(obj.notifyPropertyChange){
+            obj.notifyPropertyChange(prop);
+          }
+          if(obj.notifyChildren){
+            obj.notifyChildren(prop);
+          }
+        }
+      }
+    }
   },
 
   /**
@@ -1108,7 +1140,7 @@ SC.Record = SC.Object.extend(
      @param {String} key the name of the key on the attribute
     */
   _materializeNestedRecordType: function(value, key){
-    var childNS, recordType, ret;
+    var childNS, recordType, ret, i, item;
     // If no hash, return null.
     if (SC.typeOf(value) === SC.T_HASH){
       // Get the record type.
@@ -1121,6 +1153,17 @@ SC.Record = SC.Object.extend(
       // for the typeClass if we dont
       if (!recordType && key && this[key]){
         recordType = this[key].get('typeClass');
+      }
+      
+      // reverse lookup, we have the hash key, but no direct available attributes
+      if(!recordType && key && !this[key]){
+        // try to find
+        for(i in this){
+          item = this[i];
+          if(item && item.get && item.key === key){
+            recordType = item.get('typeClass');
+          }
+        }
       }
       
       // When all else fails throw and exception
