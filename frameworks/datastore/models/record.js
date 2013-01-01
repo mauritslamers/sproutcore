@@ -1168,7 +1168,7 @@ SC.Record = SC.Object.extend(
       
       // When all else fails throw and exception
       if (!recordType || SC.typeOf(recordType) !== SC.T_CLASS) {
-        throw 'SC.Child: Error during transform: Invalid record type.';
+        throw 'SC.Record#_materializeNestedRecordType: Error during transform: Record type could not be found. Forgot a key? Or perhaps forgot a sc_require?';
       }
     }
     
