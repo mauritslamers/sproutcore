@@ -206,7 +206,7 @@ SC.Locale.mixin(/** @scope SC.Locale */ {
     var strings = this.prototype.strings ;
     if (strings) {
       if (!this.prototype.hasOwnProperty('strings')) {
-        this.prototype.strings = SC.clone(strings) ;
+        strings = this.prototype.strings = SC.clone(strings) ;
       }
     } else strings = this.prototype.strings = {} ;
     
