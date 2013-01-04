@@ -168,6 +168,15 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return rec;
   }, 
   
+  createNestedRecords: function(recType,hashes){
+    var parent = this.get('parentObject'),
+        pattr  = this.get('parentAttribute'),
+        recs;
+    
+    recs = parent.createNestedRecords(recType,hashes,pattr);
+    return recs;
+  },
+  
   readAttribute: function(key){
     var parent = this.get('parentObject');
     if(!parent) throw new Error("ChildArray without a parentObject? this is a bug");

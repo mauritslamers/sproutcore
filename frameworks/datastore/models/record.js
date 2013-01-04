@@ -1269,6 +1269,13 @@ SC.Record = SC.Object.extend(
     return cr;
   },
   
+  createNestedRecords: function(recordType,hashes,key){
+    var me = this;
+    return hashes.map(function(h){
+      return me.createNestedRecord(recordType,h,key);
+    });
+  },
+  
   _nestedRecordKey: 0,
     
   /**
