@@ -604,63 +604,108 @@ SC.Record = SC.Object.extend(
     @private
    */
   _retrieveAttrs: function(attrs, keyStack) {
-    // TODO: need to throw an exception if we run out of attributes before we run out of keys
+    var newattrs, newkey;
     if (2 >= keyStack.length) { // retrieve attrs runs one time too many.
-      if(keyStack.length === 2) return attrs[keyStack.pop()]; 
-      else return attrs;
+      if(keyStack.length === 2){
+        newkey = keyStack.pop();
+        newattrs = attrs[newkey];
+      } 
+      else newattrs = attrs;
+      if(newattrs === null || newattrs === undefined){
+        keyStack.push(newkey); // push back on
+        return newattrs; 
+      }
+      else return newattrs;
       //return attrs[keyStack.pop()];
     } else {
-      var key = keyStack.pop();
-      return this._retrieveAttrs(attrs[key], keyStack);
+      newkey = keyStack.pop();
+      newattrs = attrs[newkey];
+      if(newattrs){
+        return this._retrieveAttrs(newattrs, keyStack);
+      }
     }
+    if(newattrs === null || newattrs === undefined){
+      keyStack.push(newkey);
+    }
+    return newattrs;
   },
 
   _writeAttribute: function(keyStack, value, ignoreDidChange) {
-    var parent = this.get('parentObject'),
-      parentAttr,
-      store,
-      storeKey,
-      attrs,
-      attrsToChange,
-      lastKey,
-      
-      didChange = NO;
-
-    if (parent) {
-      // If we have a parent record, we need to get our editable hash from the parent record
-      // push the parentAttribute onto the keyStack and call this function on the parent
-      if(parent.isChildArray){
-        keyStack.push(parent.indexOf(this));
+      var parent = this.get('parentObject'),
+        parentAttr,
+        store,
+        storeKey,
+        attrs,
+        attrsToChange,
+        lastKey,
+        origKeyStack,
+        didChange = NO;
+  
+      if (parent) {
+        // If we have a parent record, we need to get our editable hash from the parent record
+        // push the parentAttribute onto the keyStack and call this function on the parent
+        if(parent.isChildArray){
+          keyStack.push(parent.indexOf(this));
+        }
+        parentAttr = this.get('parentAttribute');
+        keyStack.push(parentAttr);
+        didChange = parent._writeAttribute(keyStack, value, ignoreDidChange);
+      } else {
+        // We have reached the top. Now we need to grab the editable has from the store and update it
+        store = this.get('store');
+        storeKey = this.get('storeKey');
+  
+        attrs = store.readEditableDataHash(storeKey);
+  
+        // no attributes? that's bad
+        if (!attrs) {
+          throw SC.Record.BAD_STATE_ERROR;
+        }
+        
+        /*
+          {
+            end_user: {
+              impairments: [
+                0: { 
+                  impairment_type: 'something'
+                }
+              ]
+            }
+          }
+          
+          keyStack: ['impairment_type',0,impairments,end_user]
+          
+        */
+        
+        //var _wAttrs = attrs;
+        attrsToChange = attrs;
+        var curAttr;
+        for(var i=keyStack.length-1;i>0;i-=1){ // down from the last key, but not the last
+          curAttr = attrsToChange[keyStack[i]];
+          if(!curAttr){ // current attr doesn't exist? check whether next is a number, if yes, current is an array
+            if(SC.typeOf(keyStack[i-1]) === SC.T_NUMBER){
+              attrsToChange[keyStack[i]] = [];
+            }
+            else {
+              attrsToChange[keyStack[i]] = {};
+            }
+          }
+          attrsToChange = attrsToChange[keyStack[i]]; 
+        }
+        lastKey = keyStack[0];
+  
+        // TODO: need to throw an exception if we run out of keys or attributes
+        // if the value is the same, do not flag the record as dirty
+        if (value !== attrsToChange[lastKey]) {
+          // NOTE: the public method, writeAttribute, calls beginEditing() and endEditing()
+          attrsToChange[lastKey] = value;
+          didChange = YES;
+        }
       }
-      parentAttr = this.get('parentAttribute');
-      keyStack.push(parentAttr);
-      didChange = parent._writeAttribute(keyStack, value, ignoreDidChange);
-    } else {
-      // We have reached the top. Now we need to grab the editable has from the store and update it
-      store = this.get('store');
-      storeKey = this.get('storeKey');
-
-      attrs = store.readEditableDataHash(storeKey);
-
-      // no attributes? that's bad
-      if (!attrs) {
-        throw SC.Record.BAD_STATE_ERROR;
-      }
-
-      attrsToChange = this._retrieveAttrs(attrs, keyStack);
-      lastKey = keyStack.pop();
-
-      // TODO: need to throw an exception if we run out of keys or attributes
-      // if the value is the same, do not flag the record as dirty
-      if (value !== attrsToChange[lastKey]) {
-        // NOTE: the public method, writeAttribute, calls beginEditing() and endEditing()
-        attrsToChange[lastKey] = value;
-        didChange = YES;
-      }
-    }
-
-    return didChange;
-  },
+  
+      return didChange;
+    },
+  
 
   /**
     Updates the passed attribute with the new value.  This method does not 
@@ -1105,6 +1150,7 @@ SC.Record = SC.Object.extend(
     var childRecord, recordType, attrkey,
         attribute = this[key];   
     
+    if(this.get('status') & SC.Record.DESTROYED) return null; // don't return anything for destroyed records...
     if (value && value.get && value.get('isRecord')) {
       childRecord = value;
     } 
@@ -1114,6 +1160,11 @@ SC.Record = SC.Object.extend(
       }
       else attrkey = key;
       recordType = this._materializeNestedRecordType(value, key);
+      if(!recordType){
+        // try the attribute
+        if(attribute) recordType = attribute.get('typeClass');
+        if(!recordType) return null;
+      } 
       childRecord = recordType.create({
         parentObject: parent || this,
         parentAttribute: attrkey,
