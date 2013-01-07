@@ -48,16 +48,20 @@ SC.ChildAttribute = SC.RecordAttribute.extend(
   
   // Default fromType is just returning itself
   fromType: function(record, key, value){
-    var sk, store, ret;
+    var sk, store, ret, attrs, attrkey = this.get('key') || key;
     if (record){
-      ret = record.registerNestedRecord(value, key);
-      if (ret) {
-        sk = ret.get('storeKey');
-        store = ret.get('store');
-        record.writeAttribute(key, store.readDataHash(sk));
+      if(value.isRecord){
+        if(value.isChildRecord){
+          // get the attributes
+          attrs = value.get('attributes');
+        }
+        else {
+          attrs = value.get('store').readEditableDataHash(value.get('storeKey')); // we should clone
+        }
+        record.writeAttribute(attrkey,attrs);
       }
       else if (value) {
-        record.writeAttribute(key, value);
+        record.writeAttribute(attrkey, value);
       }
     } 
     
