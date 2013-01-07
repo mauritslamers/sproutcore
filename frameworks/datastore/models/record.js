@@ -571,7 +571,8 @@ SC.Record = SC.Object.extend(
   */
   readAttribute: function(key) {
     var parent = this.get('parentObject'),
-      store,storeKey,attrs;
+      store,storeKey,attrs,idx,parentAttr;
+      
     if(!parent){
       store = this.get('store');
       storeKey = this.get('storeKey');
@@ -579,8 +580,12 @@ SC.Record = SC.Object.extend(
     }
     else {
       // get the data hash from the parent record
-      var parentAttr = this.get('parentAttribute');
+      parentAttr = this.get('parentAttribute');
       attrs = parent.readAttribute(parentAttr);
+      if(parent.isChildArray){
+        idx = parent.indexOf(this);
+        attrs = attrs[idx];
+      }
     }
     return attrs ? attrs[key] : undefined ; 
   },
