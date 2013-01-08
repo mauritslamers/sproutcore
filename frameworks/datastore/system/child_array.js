@@ -165,8 +165,10 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
         rec;
     
     rec = parent.createNestedRecord(recType,hash,pattr);
-    // update the cache while we can: 
-    this._records.push(rec);
+    // update the cache while we can to prevent materializing of the same record
+    if(this._records){
+      this._records.push(rec);
+    } else this._records = [rec];
     this.enumerableContentDidChange();
     return rec;
   }, 
