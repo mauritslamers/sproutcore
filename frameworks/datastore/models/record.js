@@ -1195,6 +1195,16 @@ SC.Record = SC.Object.extend(
      @param {Hash} value The hash of attributes to apply to the child record.
      @param {String} key the name of the key on the attribute
     */
+  _findRecordAttributeFor: function(hashkey){ // to find 
+    var i,item;
+    for(i in this){
+      item = this[i];
+      if(item && item.get && item.key === hashkey){
+        return item;
+      }
+    }    
+  },
+    
   _materializeNestedRecordType: function(value, key){
     var childNS, recordType, ret, i, item;
     // If no hash, return null.
@@ -1213,12 +1223,9 @@ SC.Record = SC.Object.extend(
       
       // reverse lookup, we have the hash key, but no direct available attributes
       if(!recordType && key && !this[key]){
-        // try to find
-        for(i in this){
-          item = this[i];
-          if(item && item.get && item.key === key){
-            recordType = item.get('typeClass');
-          }
+        item = this._findRecordAttributeFor(key);
+        if(item){
+          recordType = item.get('typeClass');
         }
       }
       
@@ -1252,10 +1259,10 @@ SC.Record = SC.Object.extend(
       key = recordType;
       recordType = this._materializeNestedRecordType(hash,key);
     }
-    attribute = this[key];
+    attribute = this[key] || this._findRecordAttributeFor(key);
     
     if(attribute && attribute.isNestedRecordTransform){
-      attrkey = this[key].key || key;
+      attrkey = attribute.key || key;
       if(attribute.isChildrenAttribute) attrIsToMany = true;
     }
     else attrkey = key;
@@ -1320,7 +1327,7 @@ SC.Record = SC.Object.extend(
       // // ID processing if necessary
       // if(this.generateIdForChild) this.generateIdForChild(cr);
 
-    }, this);
+    }, this,true);
 
     return cr;
   },
