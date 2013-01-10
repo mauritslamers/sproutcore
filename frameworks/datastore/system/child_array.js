@@ -273,7 +273,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     children.replace(idx, amt, newRecs);
     
     // remove item from _records cache, to leave them to be materialized the next time
-    this._records.replace(idx,amt); 
+    if(this._records) this._records.replace(idx,amt); 
     record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
