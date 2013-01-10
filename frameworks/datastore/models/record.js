@@ -1129,8 +1129,11 @@ SC.Record = SC.Object.extend(
       childRecord = value;
     } 
     else {
-      recordType = this._materializeNestedRecordType(value, key);
-      childRecord = this.createNestedRecord(recordType, value, key);
+      //recordType = this._materializeNestedRecordType(value, key);
+      //childRecord = this.createNestedRecord(recordType, value, key);
+      //childRecord = this.materialize
+      childRecord = this.materializeNestedRecord(value,key,this);
+      
     }
     if (childRecord){
       this.isParentRecord = YES;
