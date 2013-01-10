@@ -1168,11 +1168,15 @@ SC.Record = SC.Object.extend(
         if(attribute) recordType = attribute.get('typeClass');
         if(!recordType) return null;
       } 
-      childRecord = recordType.create({
-        parentObject: parent || this,
-        parentAttribute: attrkey,
-        isChildRecord: true
-      });
+      //SC.Logger.log("recordType: " + recordType.toString());
+      if(recordType.superclass === SC.Record){
+        childRecord = recordType.create({
+          parentObject: parent || this,
+          parentAttribute: attrkey,
+          isChildRecord: true
+        });        
+      }
+      else childRecord = value;
       //childRecord = this.createNestedRecord(recordType, value, key);
     }
     if (childRecord){
@@ -1274,12 +1278,15 @@ SC.Record = SC.Object.extend(
       hash = hash || {}; // init if needed
       
       // this function also checks whether the child records hash already exists at the parents hash,
-      // because if not, it should write it      
-      cr = recordType.create({
-        parentObject: this,
-        parentAttribute: attrkey,
-        isChildRecord: true
-      });
+      // because if not, it should write it 
+      if(recordType.superclass === SC.Record){
+        cr = recordType.create({
+          parentObject: this,
+          parentAttribute: attrkey,
+          isChildRecord: true
+        });        
+      }
+      else cr = hash;
       
       attrval = this.readAttribute(attrkey);
       this.propertyWillChange(key);
