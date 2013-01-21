@@ -164,7 +164,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
         pattr  = this.get('parentAttribute'),
         rec;
     
-    rec = parent.createNestedRecord(recType,hash,pattr);
+    rec = parent.createNestedRecord(recType,hash,pattr,this); // add ourselves as parent
     // update the cache while we can to prevent materializing of the same record
     if(this._records){
       this._records.push(rec);
@@ -178,7 +178,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
         pattr  = this.get('parentAttribute'),
         recs;
     
-    recs = parent.createNestedRecords(recType,hashes,pattr);
+    recs = parent.createNestedRecords(recType,hashes,pattr,this);
     return recs;
   },
   

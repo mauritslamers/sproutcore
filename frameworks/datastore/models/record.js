@@ -1149,7 +1149,7 @@ SC.Record = SC.Object.extend(
   // register will always create a nested record, which is not what we need
   // createNestedRecord should only create a non existing nested rec, 
   // and this should return an instance of the right recordType
-  materializeNestedRecord: function(value,key,parent){ 
+  materializeNestedRecord: function(value,key,parentObject){ 
     var childRecord, recordType, attrkey,
         attribute = this[key];   
     
@@ -1171,7 +1171,7 @@ SC.Record = SC.Object.extend(
       //SC.Logger.log("recordType: " + recordType.toString());
       if(recordType.superclass === SC.Record){
         childRecord = recordType.create({
-          parentObject: parent || this,
+          parentObject: parentObject || this,
           parentAttribute: attrkey,
           isChildRecord: true
         });        
@@ -1256,7 +1256,7 @@ SC.Record = SC.Object.extend(
     createNestedRecord can also be called with (key,hash)
     it will figure out the record type from the attribute
    */
-  createNestedRecord: function(recordType, hash, key) {
+  createNestedRecord: function(recordType, hash, key, parentObject) {
     //var store, id, sk, pk, cr = null, attrkey;
     var attrkey,cr,attrval, 
         attrIsToMany = false,
@@ -1281,7 +1281,7 @@ SC.Record = SC.Object.extend(
       // because if not, it should write it 
       if(recordType.superclass === SC.Record){
         cr = recordType.create({
-          parentObject: this,
+          parentObject: parentObject || this,
           parentAttribute: attrkey,
           isChildRecord: true
         });        
