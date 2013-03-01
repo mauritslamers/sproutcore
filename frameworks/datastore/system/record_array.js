@@ -582,7 +582,10 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
         storeKeys = storeKeys.copy();
       }
       
-      storeKeys = SC.Query.orderStoreKeys(storeKeys, query, store);
+      if(query && query.isFilterQuery){
+        storeKeys = query.orderStoreKeys(storeKeys,query,store);
+      }
+      else storeKeys = SC.Query.orderStoreKeys(storeKeys, query, store);
       if (SC.compare(oldStoreKeys, storeKeys) !== 0){
         this.set('storeKeys', SC.clone(storeKeys)); // replace content
       }

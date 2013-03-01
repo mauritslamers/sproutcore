@@ -7,12 +7,46 @@
 
 //FilterQuery, a different and faster approach to a query,
 // but API compatible
+sc_require('system/query');
 
 SC.FilterQuery = SC.Object.extend(SC.Copyable, SC.Freezable, {
   
   _opts: null,
   
-  _recType: null,
+  recordType: null,
+  
+  isFilterQuery: true, // walk like a duck
+  
+  isQuery: true, 
+  
+  // this is not correct, needs to be an SC.Set
+  expandedRecordTypes: function(){
+    return [this.get('recordType')];
+  }.property('recordType').cacheable(),
+  
+  scope: null,
+  
+  location: 'local', // SC.Local
+  
+  /**
+    Returns YES if query location is Remote.  This is sometimes more 
+    convenient than checking the location.
+    
+    @property {Boolean}
+  */
+  isRemote: function() {
+    return this.get('location') === SC.Query.REMOTE;
+  }.property('location').cacheable(),
+
+  /**
+    Returns YES if query location is Local.  This is sometimes more 
+    convenient than checking the location.
+    
+    @property {Boolean}
+  */
+  isLocal: function() {
+    return this.get('location') === SC.Query.LOCAL;
+  }.property('location').cacheable(),
   
   contains: function(rec){
     if(rec.get('recordType') !== this._recType) return false;
@@ -343,15 +377,26 @@ SC.FilterQuery = SC.Object.extend(SC.Copyable, SC.Freezable, {
     else {
       this._methods[lemma] = null;
     }
+  },
+  
+  orderStoreKeys: function(storeKeys,query,store){
+    // effectively just take all storeKeys, get records, and filter, then get storeKeys
+    
+    var recs = storeKeys.map(function(sk){
+      return store.materializeRecord(sk);
+    });
+    
+    var ret = this.filter(recs,query._opts);
+    return ret.getEach('storeKey');
   }
+ 
 });
 
 SC.FilterQuery.local = function(recType,opts){
   if(!recType) throw new Error("cannot have query without record type");
   if(!opts) SC.Logger.warn("Having a filter without filter options just returns the entire array");
   var ret = SC.FilterQuery.create({
-    isLocal: true,
-    _recType: recType,
+    recordType: recType,
     _opts: opts
   });
   return ret;
@@ -360,8 +405,8 @@ SC.FilterQuery.local = function(recType,opts){
 SC.FilterQuery.remote = function(recType,opts){
   if(!recType) throw new Error("cannot have query without record type");
   var ret = SC.FilterQuery.create({
-    isRemote: true,
-    _recType: recType,
+    location: 'remote',
+    recordType: recType,
     _opts: opts
   });
   return ret;
@@ -377,6 +422,7 @@ SC.FilterQuery.unregisterFilterMethod = function(lemma){
     SC.FilterQuery.prototype._methods[lemma] = undefined;
   }
 };
+
 // wrapper to apply a filter to a random array
 SC.FilterQuery.filter = function(array,opts){
   
