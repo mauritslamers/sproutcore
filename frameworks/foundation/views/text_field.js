@@ -1006,6 +1006,14 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
         this.set('value', val.substr(0, max));
       }
     }else this.set('hintON', YES);
-  }.observes('value')
+  }.observes('value'),
+  
+  touchStart: function(evt) {
+    return this.mouseDown(evt);
+  },
+
+  touchEnd: function(evt) {
+    return this.mouseUp(evt);
+  }
   
 });
