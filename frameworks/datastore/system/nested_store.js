@@ -117,6 +117,11 @@ SC.NestedStore = SC.Store.extend(
     return sc_super();
   },
   
+  commitConflictsWithParent: function(){
+    var pstore = this.get('parentStore');
+    return pstore.commitConflictsFromNestedStore(this, this.chainedChanges);
+  },
+    
   /**
     Propagate this store's changes to its parent.  If the store does not 
     have a parent, this has no effect other than to clear the change set.
