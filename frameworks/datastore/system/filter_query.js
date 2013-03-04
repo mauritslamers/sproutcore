@@ -388,6 +388,19 @@ SC.FilterQuery = SC.Object.extend(SC.Copyable, SC.Freezable, {
     
     var ret = this.filter(recs,query._opts);
     return ret.getEach('storeKey');
+  },
+  
+  containsRecordTypes: function(types) {
+    var rtype = this.get('recordType');
+    if (rtype) {
+      return !!types.find(function(t) { return SC.kindOf(t, rtype); });
+    
+    } else if (rtype = this.get('recordTypes')) {
+      return !!rtype.find(function(t) { 
+        return !!types.find(function(t2) { return SC.kindOf(t2,t); });
+      });
+      
+    } else return YES; // allow anything through
   }
  
 });
