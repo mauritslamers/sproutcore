@@ -168,6 +168,33 @@ SC.NestedStore = SC.Store.extend(
     return this ;
   },
   
+  
+  /** 
+    Discard the changes made to a single record 
+    
+    @returns {SC.Store} receiver
+  */
+  
+  discardChangesFor: function(storeKey){
+    var records, locks;
+    if ((records = this.records) && (locks = this.locks)) {
+      var pstore = this.get('parentStore'), psRevisions = pstore.revisions;
+      var revisions = this.revisions, lock, rev;
+      if(!records.hasOwnProperty(storeKey)) return this;
+      if(!(lock = locks[storeKey])) return this;
+ 
+      rev = psRevisions[storeKey];
+      if ((rev !== lock) || (revisions[storeKey] > rev)) {
+        revisions[storeKey] = rev; // set equal to parent store
+        locks[storeKey] = 0;
+        if(this.editables) this.editables[storeKey] = 0;        
+        this._notifyRecordPropertyChange(parseInt(storeKey,10));
+      }
+    }
+    this.flush();
+    return this;
+  },
+  
   /**
     When you are finished working with a chained store, call this method to 
     tear it down.  This will also discard any pending changes.
