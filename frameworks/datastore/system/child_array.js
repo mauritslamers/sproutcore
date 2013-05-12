@@ -316,7 +316,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   
   recordPropertyDidChange: function(keys){
-    console.log('recordPropertyDidChange called');
+    //console.log('recordPropertyDidChange called');
     return this;
   },
   // recordPropertyDidChange: function(keys) {
