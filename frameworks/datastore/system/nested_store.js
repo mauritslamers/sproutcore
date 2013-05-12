@@ -118,8 +118,11 @@ SC.NestedStore = SC.Store.extend(
   },
   
   commitConflictsWithParent: function(){
-    var pstore = this.get('parentStore');
-    return pstore.commitConflictsFromNestedStore(this, this.chainedChanges);
+    if(this.get('hasChanges')){
+      var pstore = this.get('parentStore');
+      return pstore.commitConflictsFromNestedStore(this, this.chainedChanges);      
+    }
+    else return false;
   },
     
   /**
