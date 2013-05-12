@@ -1168,8 +1168,7 @@ SC.Record = SC.Object.extend(
         if(attribute) recordType = attribute.get('typeClass');
         if(!recordType) return null;
       } 
-      //SC.Logger.log("recordType: " + recordType.toString());
-      if(recordType.superclass === SC.Record){
+      if(recordType.kindOf && recordType.kindOf(SC.Record)){
         childRecord = recordType.create({
           parentObject: parentObject || this,
           parentAttribute: attrkey,
@@ -1275,11 +1274,17 @@ SC.Record = SC.Object.extend(
     else attrkey = key;
     
     SC.run(function() {
+      var po;
       hash = hash || {}; // init if needed
       
       // this function also checks whether the child records hash already exists at the parents hash,
       // because if not, it should write it 
-      if(recordType.superclass === SC.Record){
+      if(recordType.kindOf && recordType.kindOf(SC.Record)){
+        po = this.get(key);
+        if(attrIsToMany && !parentObject && po && po.isChildArray){
+          // figure out parentObject
+          parentObject = po;
+        }
         cr = recordType.create({
           parentObject: parentObject || this,
           parentAttribute: attrkey,
