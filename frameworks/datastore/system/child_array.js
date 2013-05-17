@@ -270,27 +270,33 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
         cr, recordType;
     
     newRecs = this._processRecordsToHashes(recs);
-    children.replace(idx, amt, newRecs);
+    // children.replace(idx, amt, newRecs); // this results in KVO stuff on an attribute hash
+    if (!recs || recs.length === 0) { // adding the replace implementation without the call to enumerable
+      children.splice(idx, amt) ;
+    } else {
+      var args = [idx, amt].concat(newRecs) ;
+      children.splice.apply(children,args) 
+    }
     
     // remove item from _records cache, to leave them to be materialized the next time
-    if(this._records) this._records.replace(idx,amt); 
+    if(this._records) this._records.replace(idx,amt); // we can do replace here, as _records are SC.Record instances
     record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
     this.enumerableContentDidChange();
     return this;
-    
   },
   
   _processRecordsToHashes: function(recs){
     var store, sk;
     recs = recs || [];
     recs.forEach( function(me, idx){
-      if (me.isNestedRecord){
+      //if (me.isNestedRecord){ // this is weird... we are already a child array, why would we check whether the record is 
+        // already a nested record... ?
         store = me.get('store');
         sk = me.storeKey;
         recs[idx] = store.readDataHash(sk);
-      }
+      //}
     });
     
     return recs;
