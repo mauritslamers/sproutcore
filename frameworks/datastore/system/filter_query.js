@@ -100,9 +100,13 @@ SC.FilterQuery = SC.Object.extend(SC.Copyable, SC.Freezable, {
     },
 
     _getPropVal: function(propname,item){
+      var tuple;
       if(item.get){
         if(propname.indexOf(".") > -1){
-          return item.getPath(propname);
+          //return item.getPath(propname);
+          tuple = SC.tupleForPropertyPath(propname,item);
+          if(tuple === null || tuple[0] === null) return undefined;
+          return this._getPropVal(tuple[1],tuple[0]); // recursing down
         }
         else return item.get(propname);
       }
