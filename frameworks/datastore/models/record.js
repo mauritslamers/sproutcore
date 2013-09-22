@@ -471,7 +471,6 @@ SC.Record = SC.Object.extend(
           }
           if(obj.notifyChildren){ // array
             obj.notifyChildren(prop);
-            if(prop !== "status") obj.enumerableContentDidChange(); // make sure the arrays are reevaluated
           }
         }
       }
