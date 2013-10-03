@@ -39,6 +39,38 @@
 SC.Record = SC.Object.extend(
 /** @scope SC.Record.prototype */ {
 
+  /** @private
+    Creates string representation of record, with status.
+
+    @returns {String}
+  */
+
+  toString: function() {
+    // We won't use 'readOnlyAttributes' here because accessing them directly
+    // avoids a SC.clone() -- we'll be careful not to edit anything.
+    //var attrs = this.get('store').readDataHash(this.get('storeKey'));
+    var attrs = this.get('attributes');
+    return "%@(%@) %@".fmt(this.constructor.toString(), SC.inspect(attrs), this.statusString());
+  },
+
+  /** @private
+    Creates string representation of record, with status.
+
+    @returns {String}
+  */
+
+  statusString: function() {
+    var ret = [], status = this.get('status');
+
+    for(var prop in SC.Record) {
+      if(prop.match(/[A-Z_]$/) && SC.Record[prop]===status) {
+        ret.push(prop);
+      }
+    }
+
+    return ret.join(" ");
+  },
+
   /**
     Walk like a duck
 
@@ -143,7 +175,7 @@ SC.Record = SC.Object.extend(
     else {
       return this.get('store').readStatus(this.get('storeKey'));
     }
-  }.property('storeKey').cacheable(),
+  }.property('storeKey'),
 
   /**
     The store that owns this record.  All changes will be buffered into this
@@ -259,31 +291,26 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   attributes: function() {
-    var store, storeKey, attrs, idx,
-        parent = this.get('parentObject'),
-        parentAttr = this.get('parentAttribute');
+    var parent = this.get('parentObject'),
+        parentAttr = this.get('parentAttribute'),
+        store,storeKey,ret,idx;
 
     if(parent){
       if(this.get('isDestroyed')) return null;
       else {
-        attrs = parent.get('attributes');
-        if(attrs) {
-          if(parent.isChildArray){
-            idx = parent.indexOf(this);
-            return attrs[idx];
-          }
-          else return attrs[parentAttr];
+        ret = parent.readAttribute(parentAttr);
+        if(parent.isChildArray){
+          idx = parent.indexOf(this);
+          ret = ret[idx];
         }
-        else return attrs;
       }
-      //return parent.get('attributes').get(this.parentAttribute);
     }
     else {
       store    = this.get('store');
       storeKey = this.get('storeKey');
-      return store.readEditableDataHash(storeKey);
+      ret      = store.readDataHash(storeKey);
     }
-
+    return ret;
   }.property(),
 
   /**
@@ -295,22 +322,8 @@ SC.Record = SC.Object.extend(
     @property {Hash}
   **/
   readOnlyAttributes: function() {
-    var parent = this.get('parentObject'),
-        parentAttr = this.get('parentAttribute'),
-        store,storeKey,ret;
-    if(parent){
-      if(this.get('isDestroyed')) return null;
-      else return parent.get('readOnlyAttributes').get(parentAttr);
-      //return parent.get('readOnlyAttributes').get(this.parentAttribute);
-    }
-    else {
-      store    = this.get('store');
-      storeKey = this.get('storeKey');
-      ret      = store.readDataHash(storeKey);
-
-      if (ret) ret = SC.clone(ret, YES);
-    }
-
+    var ret = this.get('attributes');
+    if (ret) ret = SC.clone(ret, YES);
     return ret;
   }.property(),
 
@@ -362,6 +375,15 @@ SC.Record = SC.Object.extend(
   //   var sk = this.storeKey, store = this.get('store');
   //   return store.materializeParentRecord(sk);
   // }.property(),
+
+  parentRecord: function(){
+    var ret = this.get('parentObject');
+    if(ret.isChildArray){
+      ret = ret.objectAt(ret.indexOf(this));
+    }
+    return ret;
+  }.property('parentObject').cacheable(),
+
 
   // ...............................
   // CRUD OPERATIONS
@@ -466,11 +488,15 @@ SC.Record = SC.Object.extend(
       if(item && (SC.instanceOf(item,SC.ChildAttribute) || SC.instanceOf(item,SC.ChildrenAttribute))){
         obj = this.get(i);
         if(obj){
-          if(obj.notifyPropertyChange){
-            obj.notifyPropertyChange(prop);
+          if(!prop && obj.allPropertiesDidChange) obj.allPropertiesDidChange();
+          else {
+            if(obj.notifyPropertyChange){
+              obj.notifyPropertyChange(prop);
+            }
           }
           if(obj.notifyChildren){ // array
             obj.notifyChildren(prop);
+            // if(obj.recordPropertyDidChange) obj.recordPropertyDidChange(prop);
           }
         }
       }
@@ -493,11 +519,14 @@ SC.Record = SC.Object.extend(
   */
   recordDidChange: function(key) {
 
+    console.log('recordDidChange: key: ' + key);
     // If we have a parent, they changed too!
     // == TODO: this needs to be more sophisticated: only trigger changes of recs that actually change
-    var p = this.get('parentObject');
+    var p = this.get('parentObject'), pA = this.get('parentAttribute'), newkey = [pA];
     if (p){
-      p.recordDidChange();
+      if(p.get('isChildArray')) newkey.push(p.indexOf(this));
+      newkey.push(key);
+      p.recordDidChange(newkey.join("."));
     }
     else {
       this.get('store').recordDidChange(null, null, this.get('storeKey'), key);
@@ -532,17 +561,6 @@ SC.Record = SC.Object.extend(
   beginEditing: function() {
     this._editLevel++;
     return this ;
-  },
-
-  /**
-    Roll out one level of editing in the event that no attributes were written. This can be nested
-    along with calls to beginEditing(), but should be done in place of endEditing().
-
-    @return {SC.Record} receiver
-   */
-  cancelEditing: function() {
-    this._editLevel--;
-    return this;
   },
 
   /**
@@ -593,8 +611,7 @@ SC.Record = SC.Object.extend(
 
   // editable version, clone on delivery, unsure whether actually needed...
   readEditableAttribute: function(key){
-    var attr = this.readAttribute(key);
-    return SC.clone(attr);
+    return this.readAttribute(key);
   },
   /**
     Helper method to recurse down the attributes to the data hash we are changing.
@@ -720,9 +737,11 @@ SC.Record = SC.Object.extend(
       record as dirty
     @returns {SC.Record} receiver
   */
-  writeAttribute: function(key, value, ignoreDidChange) {
+  writeAttribute: function (key, value, ignoreDidChange) {
     var keyStack = [],
-      didChange;
+        didChange,
+        store = this.get('store'),
+        storeKey = this.get('storeKey');
 
     if (!ignoreDidChange) {
       this.beginEditing();
@@ -731,40 +750,21 @@ SC.Record = SC.Object.extend(
     keyStack.push(key);
     didChange = this._writeAttribute(keyStack, value, ignoreDidChange);
 
-    if(!ignoreDidChange){
-      if(didChange) this.endEditing(key);
-      else this.cancelEditing();
-    }
-
-    /*
-    var store = this.get('store'),
-      storeKey = this.get('storeKey'),
-      parent = this.get('parentObject'),
-      parentAttr = this.get('parentAttribute'),
-      attrs;
-
-    if(parent){
-      parent.writeChildAttribute(this.parent)
-    }
-    attrs = store.readEditableDataHash(storeKey);
-    if (!attrs) throw SC.Record.BAD_STATE_ERROR;
-
-    // if value is the same, do not flag record as dirty
-    if (value !== attrs[key]) {
-      if(!ignoreDidChange) this.beginEditing();
-      attrs[key] = value;
-
-      // If the key is the primaryKey of the record, we need to tell the store
-      // about the change.
-      if (key===this.get('primaryKey')) {
-        SC.Store.replaceIdFor(storeKey, value) ;
+    if (didChange) {
+      if (key === this.get('primaryKey')) {
+        SC.Store.replaceIdFor(storeKey, value);
         this.propertyDidChange('id'); // Reset computed value
       }
-
-      if(!ignoreDidChange) this.endEditing(key);
+      if (!ignoreDidChange) {
+        this.endEditing(key);
+      }
+      else {
+        // We must still inform the store of the change so that it can track the change across stores.
+        store.dataHashDidChange(storeKey, null, undefined, key);
+      }
     }
-    */
-    return this ;
+
+    return this;
   },
 
   /**
@@ -854,16 +854,16 @@ SC.Record = SC.Object.extend(
         keys.forEach(function(k) { this.notifyPropertyChange(k); }, this);
         this.notifyPropertyChange('status');
         this.endPropertyChanges();
-
-      } else this.allPropertiesDidChange();
+        if(isParent) this.notifyChildren(keys);
+      } else {
+        this.allPropertiesDidChange();
+        this.notifyChildren();
+      }
 
       // also notify manyArrays
       var manyArrays = this.relationships,
           loc        = manyArrays ? manyArrays.length : 0 ;
       while(--loc>=0) manyArrays[loc].recordPropertyDidChange(keys);
-      if(isParent){
-        this.notifyChildren(keys);
-      }
     }
   },
 
@@ -895,9 +895,10 @@ SC.Record = SC.Object.extend(
         key, valueForKey, typeClass, recHash, attrValue, normChild,  isRecord,
         isChild, defaultVal, keyForDataHash, attr;
 
-    var dataHash = store.readEditableDataHash(storeKey) || {};
-    dataHash[primaryKey] = recordId;
-    recHash = store.readDataHash(storeKey);
+    var dataHash = this.get('attributes') || {};
+    if(!this.get('parentObject')) dataHash[primaryKey] = recordId;
+    //recHash = store.readDataHash(storeKey);
+    recHash = this.get('attributes');
 
     for (key in this) {
       // make sure property is a record attribute.
@@ -1086,37 +1087,7 @@ SC.Record = SC.Object.extend(
     return sc_super();
   },
 
-  /** @private
-    Creates string representation of record, with status.
 
-    @returns {String}
-  */
-
-  toString: function() {
-    // We won't use 'readOnlyAttributes' here because accessing them directly
-    // avoids a SC.clone() -- we'll be careful not to edit anything.
-    //var attrs = this.get('store').readDataHash(this.get('storeKey'));
-    var attrs = this.get('attributes');
-    return "%@(%@) %@".fmt(this.constructor.toString(), SC.inspect(attrs), this.statusString());
-  },
-
-  /** @private
-    Creates string representation of record, with status.
-
-    @returns {String}
-  */
-
-  statusString: function() {
-    var ret = [], status = this.get('status');
-
-    for(var prop in SC.Record) {
-      if(prop.match(/[A-Z_]$/) && SC.Record[prop]===status) {
-        ret.push(prop);
-      }
-    }
-
-    return ret.join(" ");
-  },
 
   /**
     Registers a child record with this parent record.

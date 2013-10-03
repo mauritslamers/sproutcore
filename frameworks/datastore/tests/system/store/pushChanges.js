@@ -10,13 +10,13 @@ module("SC.Store#pushChanges", {
   setup: function() {
     SC.RunLoop.begin();
     store = SC.Store.create();
-    
+
     json = {
       string: "string",
       number: 23,
       bool:   YES
     };
-    
+
     storeKey1 = SC.Store.generateStoreKey();
     store.writeDataHash(storeKey1, json, SC.Record.EMPTY);
 
@@ -61,12 +61,11 @@ test("Issue a pushError and check if there is conflicts", function() {
 
 test("A pushRetrieve updating the id of an existing record should update the primary Key cache", function(){
   var tmpid, recFirst, recSecond, sK;
-  
   tmpid = "@2345235asddsgfd";
   recFirst = { firstname: 'me', lastname: 'too', guid: tmpid };
   recSecond = { firstname: 'me', lastname: 'too', guid: 1 };
   SC.RunLoop.begin();
-  var sK = store.loadRecord(SC.Record, rec, tmpid);
+  var sK = store.loadRecord(SC.Record, recFirst, tmpid);
   SC.RunLoop.end();
   SC.RunLoop.begin();
   store.pushRetrieve(SC.Record,1,recSecond,sK);

@@ -92,8 +92,11 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   notifyChildren: function(prop){
     var d = function(obj){
       if(obj){
-        if(obj.notifyPropertyChange){
-          obj.notifyPropertyChange(prop);
+        if(!prop && obj.allPropertiesDidChange) obj.allPropertiesDidChange();
+        else {
+          if(obj.notifyPropertyChange){
+            obj.notifyPropertyChange(prop);
+          }
         }
         if(obj.notifyChildren){
           obj.notifyChildren(prop);
@@ -101,7 +104,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
       }
     };
 
-    this.forEach(d);
+    this.forEach(d,this);
+    this.recordPropertyDidChange(prop);
   },
 
   /**
@@ -129,8 +133,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     ret = parent.readEditableAttribute(parentAttr);
     if(!ret){
       ret = [];
+      this.recordPropertyDidChange();
     }
-    if(ret !== this._prevChildren) this.recordPropertyDidChange();
 
     return ret;
     //
@@ -169,7 +173,8 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if(this._records){
       this._records.push(rec);
     } else this._records = [rec];
-    this.enumerableContentDidChange();
+    //this.enumerableContentDidChange();
+    this.enumerableContentDidChange(this.get('length'),0,1);
     return rec;
   },
 
@@ -279,11 +284,14 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     }
 
     // remove item from _records cache, to leave them to be materialized the next time
-    if(this._records) this._records.replace(idx,amt); // we can do replace here, as _records are SC.Record instances
+    if(this._records){
+      this._records.replace(idx,amt); // we can do replace here, as _records are SC.Record instances
+    }
     record.writeAttribute(pname,children);
     // notify that the record did change...
     record.recordDidChange(pname);
-    this.enumerableContentDidChange();
+    //this.enumerableContentDidChange();
+    this._childrenContentDidChange(idx,amt,len);
     return this;
   },
 
@@ -291,12 +299,13 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     var store, sk;
     recs = recs || [];
     recs.forEach( function(me, idx){
-      //if (me.isNestedRecord){ // this is weird... we are already a child array, why would we check whether the record is
-        // already a nested record... ?
+      if(me.get){
         store = me.get('store');
-        sk = me.storeKey;
-        recs[idx] = store.readDataHash(sk);
-      //}
+        sk = me.get('storeKey');
+        hash = store.readDataHash(sk);
+      }
+      else hash = me;
+      recs[idx] = hash;
     });
 
     return recs;
@@ -322,9 +331,12 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
 
   recordPropertyDidChange: function(keys){
-    //console.log('recordPropertyDidChange called');
-    // this needs to be in here in order to update the array controller containing this array
-    this._childrenContentDidChange();
+    var start = 0, removedCount = 0, addedCount = 0;
+    if(keys && !keys.contains(this.get('propertyName'))) return this;
+    if(!keys){
+      removedCount = addedCount = this.get('length');
+    }
+    this._childrenContentDidChange(start,removedCount,addedCount);
     return this;
   },
   // recordPropertyDidChange: function(keys) {
@@ -349,9 +361,9 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     dump any cached record lookup and then notify that the enumerable content
     has changed.
   */
-  _childrenContentDidChange: function(target, key, value, rev) {
-    this._records = null ; // clear cache
-    this.enumerableContentDidChange();
+  //_childrenContentDidChange: function(target, key, value, rev) {
+  _childrenContentDidChange: function(start,removedCount,addedCount){
+    this.enumerableContentDidChange(start,removedCount,addedCount);
   },
 
   /** @private */
