@@ -17,7 +17,7 @@
   I AM CHANGING THIS AND BREAKING APIs, so I have renamed it (and put it in a more
   logical place) so that I don't break anyone else's current use of SelectButtonView...
   even though I have a suspiscion that no one uses it.
-  
+
   @extends SC.ButtonView
   @version 1.0
   @author Alex Iskander, Mohammed Ashik
@@ -79,12 +79,12 @@ SC.SelectView = SC.ButtonView.extend(
      Key used to extract icons from the items array
   */
   itemIconKey: null,
-  
+
   /**
     Key to use to identify separators.
   */
   itemSeparatorKey: "separator",
-  
+
   /**
     Key used to indicate if the item is to be enabled.
   */
@@ -258,7 +258,7 @@ SC.SelectView = SC.ButtonView.extend(
     Example view used for menu items.
   */
   exampleView: null,
-  
+
   /**
     customView menu offset width
   */
@@ -280,22 +280,22 @@ SC.SelectView = SC.ButtonView.extend(
     @property {Number} heightPadding for menu pane.
   */
   menuPaneHeightPadding: 0,
-  
+
   /**
   The amount of space to add to the calculated width of the menu item strings to
   determine the width of the menu pane.
   */
   menuItemPadding: 35,
-  
+
   /**
     Disable context menu.
   */
   isContextMenuEnabled: NO,
-  
+
   /**
-    This is a property to enable/disable focus rings in buttons. 
+    This is a property to enable/disable focus rings in buttons.
     For select_button, we are making it a default.
-    
+
     @default YES
   */
   supportFocusRing: YES,
@@ -417,11 +417,11 @@ SC.SelectView = SC.ButtonView.extend(
       else {
         isChecked = NO ;
       }
-      
+
       // Check if the item is enabled
       itemEnabled = (object.get ? object.get(isEnabledKey) : object[isEnabledKey]);
       if (NO !== itemEnabled) itemEnabled = YES;
-      
+
       // get the separator
       isSeparator = separatorKey ? (object.get ? object.get(separatorKey) : object[separatorKey]) : NO;
 
@@ -481,9 +481,9 @@ SC.SelectView = SC.ButtonView.extend(
       items, elementOffsetWidth, largestMenuWidth, item, element, idx,
       value, itemList, menuControlSize, menuHeightPadding, customView,
       customMenuView, menu, itemsLength;
-    
+
     buttonLabel = this.$('.sc-button-label')[0] ;
-    
+
     var menuWidthOffset = SC.SelectView.MENU_WIDTH_OFFSET ;
     if(!this.get('isDefaultPosition')) {
       switch (this.get('controlSize')) {
@@ -506,7 +506,7 @@ SC.SelectView = SC.ButtonView.extend(
     }
     // Get the length of the text on the button in pixels
     menuWidth = this.get('layer').offsetWidth + menuWidthOffset ;
-    
+
     // Get the length of the text on the button in pixels
     menuWidth = this.get('layer').offsetWidth ;
     scrollWidth = buttonLabel.scrollWidth ;
@@ -528,7 +528,7 @@ SC.SelectView = SC.ButtonView.extend(
     var customViewMenuOffsetWidth = this.get('customViewMenuOffsetWidth') ;
     var className = 'sc-view sc-pane sc-panel sc-palette sc-picker sc-menu select-button sc-scroll-view sc-menu-scroll-view sc-container-view menuContainer sc-button-view sc-menu-item sc-regular-size' ;
     className = customViewClassName ? (className + ' ' + customViewClassName) : className ;
-    
+
     SC.prepareStringMeasurement("", className);
     for (idx = 0, itemsLength = items.length; idx < itemsLength; ++idx) {
       //getting the width of largest menu item
@@ -618,7 +618,7 @@ SC.SelectView = SC.ButtonView.extend(
   */
   displaySelectedItem: function(menuView) {
     var currentItem = menuView.get("selectedItem");
-    
+
     this.set("value", currentItem.get("value"));
     this.set("title", currentItem.get("title"));
     this.set("_itemIdx", currentItem.get("contentIndex"));
@@ -736,7 +736,7 @@ SC.SelectView = SC.ButtonView.extend(
   mouseExited: function() {
     return YES;
   },
-  
+
   /**
     @private
 
@@ -767,19 +767,27 @@ SC.SelectView = SC.ButtonView.extend(
     }
     return arguments.callee.base.apply(this,arguments);
   },
-  
+
   /** Function overridden - tied to the isEnabled state */
   acceptsFirstResponder: function() {
     return this.get('isEnabled');
   }.property('isEnabled'),
-  
+
   /** @private
     Override the button isSelectedDidChange function in order to not perform any action
     on selecting the select_button
   */
   _button_isSelectedDidChange: function() {
-    
-  }.observes('isSelected')
+
+  }.observes('isSelected'),
+
+  touchStart: function(evt) {
+    return this.mouseDown(evt);
+  },
+
+  touchEnd: function(evt) {
+    return this.mouseUp(evt);
+  }
 
 }) ;
 
