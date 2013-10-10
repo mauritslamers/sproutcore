@@ -173,8 +173,7 @@ SC.ChildArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if(this._records){
       this._records.push(rec);
     } else this._records = [rec];
-    //this.enumerableContentDidChange();
-    this.enumerableContentDidChange(this.get('length'),0,1);
+    this.enumerableContentDidChange();
     return rec;
   },
 
